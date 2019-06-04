@@ -1,6 +1,8 @@
 
 # IEC 62056-21
 
+[![CircleCI](https://circleci.com/gh/pwitab/iec62056-21/tree/master.svg?style=svg)](https://circleci.com/gh/pwitab/iec62056-21/tree/master)
+[![Coverage Status](https://coveralls.io/repos/github/pwitab/iec62056-21/badge.svg)](https://coveralls.io/github/pwitab/iec62056-21)
 
 A Python library for IEC 62056-21, Direct Local Data Exchange of Energy Meters. 
 Former IEC 61107 or IEC 1107
