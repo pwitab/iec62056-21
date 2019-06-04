@@ -1,0 +1,22 @@
+version: 2.1
+
+jobs:
+  build:
+    working_directory: ~/work_dir
+    docker:
+      - image: circleci/python:3.6.8 # every job must define an image for the docker executor and subsequent jobs may define a different image.
+    steps:
+      - checkout  # checkout source code to working directory
+      - run:
+          command: |
+            python -m venv venv
+            . venv/bin/activate
+            pip install -r requirements.txt
+            pip install -e .
+      - run:
+          command: |
+            . venv/bin/activate
+            pytest -v --cov=iec62056_21
+            coveralls
+
+

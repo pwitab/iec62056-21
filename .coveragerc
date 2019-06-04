@@ -1,0 +1,15 @@
+[run]
+branch = True
+
+[report]
+exclude_lines =
+    if self.debug:
+    pragma: no cover
+    def __repr__
+    raise NotImplementedError
+    raise NotImplemented
+    if __name__ == .__main__.:
+    pass
+ignore_errors = True
+omit =
+    *migrations*, *tests*
