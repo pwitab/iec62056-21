@@ -13,10 +13,10 @@ REQUIRES_PYTHON = "~=3.6"
 VERSION = "0.0.1"
 
 # What packages are required for this module to be executed?
-REQUIRED = []
+REQUIRED = ["attrs>=19.1.0", "pyserial>=3.4"]
 
 # What packages are optional?
-EXTRAS = {"serial": ["pyserial"]}
+EXTRAS = {}
 
 here = os.path.abspath(os.path.dirname(__file__))
 
