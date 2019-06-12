@@ -21,6 +21,12 @@ and this project adheres to `Semantic Versioning: https://semver.org/spec/v2.0.0
 ### Security
 
 
+# v.0.0.2 (2019-06-12)
+
+### Fixed
+
+Issue `#2` Dependency problems when installing.
+
 # v0.0.1 (2019-06-04)
 
 Initial implementation of IEC 62056-21 with focus on supporting LIS 200 derivative 
