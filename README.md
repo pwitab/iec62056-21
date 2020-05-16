@@ -41,24 +41,19 @@ Reading a meter using a optical usb probe via the D0-interface.
 from iec62056_21.client import Iec6205621Client
 
 client = Iec6205621Client.with_serial_transport(port='/dev/tty_something')
+client.connect()
+print(client.standard_readout())
 
-password_challange = client.access_programming_mode()
-
-client.send_password('00000000')  # Common standard password
-
-data_answer = client.read_value('1.8.0')
 ```
 
+
+Reading a meter over an internet connection.
 ```python
 from iec62056_21.client import Iec6205621Client
 
 client = Iec6205621Client.with_tcp_transport(address=('192.168.0.1', 8000), device_address='12345678', password='00000000')
-
-password_challange = client.access_programming_mode()
-
-client.send_password('00000000')  # Common standard password
-
-data_answer = client.read_value('1.8.0')
+client.connect()
+print(client.standard_readout())
 ```
 
 
