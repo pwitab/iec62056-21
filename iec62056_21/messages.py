@@ -50,7 +50,7 @@ class DataSet(Iec6205621Data):
 
     EXCLUDE_CHARS = ["(", ")", "/", "!"]
 
-    def __init__(self, address, value, unit=None, no_address=False):
+    def __init__(self, value: str, address: str = None, unit: str = None):
 
         # TODO: in programming mode, protocol mode C the value can be up to 128 chars
 
@@ -58,11 +58,16 @@ class DataSet(Iec6205621Data):
         self.value = value
         self.unit = unit
 
-    def to_representation(self):
-        if self.unit:
+    def to_representation(self) -> str:
+        if self.unit is not None and self.address is not None:
             return f"{self.address}({self.value}*{self.unit})"
-        else:
+        elif self.address is not None and self.unit is None:
             return f"{self.address}({self.value})"
+        else:
+            if self.value is None:
+                return f"()"
+            else:
+                return f"({self.value})"
 
     @classmethod
     def from_representation(cls, data_set_string):
@@ -90,8 +95,8 @@ class DataSet(Iec6205621Data):
     def __repr__(self):
         return (
             f"{self.__class__.__name__}("
-            f"address={self.address!r}, "
             f"value={self.value!r}, "
+            f"address={self.address!r}, "
             f"unit={self.unit!r}"
             f")"
         )
@@ -187,9 +192,11 @@ class ReadoutDataMessage(Iec6205621Data):
 
 class CommandMessage(Iec6205621Data):
     allowed_commands = ["P", "W", "R", "E", "B"]
-    allowed_command_types = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    allowed_command_types = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
 
-    def __init__(self, command, command_type, data_set):
+    def __init__(
+        self, command: str, command_type: str, data_set: typing.Optional[DataSet]
+    ):
         self.command = command
         self.command_type = command_type
         self.data_set = data_set
@@ -219,7 +226,7 @@ class CommandMessage(Iec6205621Data):
         body = _message[3:]
 
         command = header[1]
-        command_type = int(header[2])
+        command_type = header[2]
         data_set = DataSet.from_representation(body[1:-1])
 
         return cls(command, command_type, data_set)
@@ -231,12 +238,12 @@ class CommandMessage(Iec6205621Data):
         else:
             _add_data = ""
         data_set = DataSet(value=_add_data, address=address)
-        return cls(command="R", command_type=1, data_set=data_set)
+        return cls(command="R", command_type="1", data_set=data_set)
 
     @classmethod
     def for_single_write(cls, address, value):
         data_set = DataSet(value=value, address=address)
-        return cls(command="W", command_type=1, data_set=data_set)
+        return cls(command="W", command_type="1", data_set=data_set)
 
     def __repr__(self):
         return (
@@ -339,10 +346,12 @@ class AckOptionSelectMessage(Iec6205621Data):
 
 
 class IdentificationMessage(Iec6205621Data):
-    def __init__(self, identification, manufacturer, switchover_baudrate_char):
-        self.identification = identification
-        self.manufacturer = manufacturer
-        self.switchover_baudrate_char = switchover_baudrate_char
+    def __init__(
+        self, identification: str, manufacturer: str, switchover_baudrate_char: str
+    ):
+        self.identification: str = identification
+        self.manufacturer: str = manufacturer
+        self.switchover_baudrate_char: str = switchover_baudrate_char
 
     def to_representation(self):
         return (

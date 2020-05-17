@@ -53,6 +53,8 @@ class BaseTransport:
             start_time = time.time()
             while True:
                 b = self.recv(1)
+                logger.debug(f"{b!r}")
+
                 duration = time.time() - start_time
                 if duration > self.timeout:
                     raise TimeoutError(f"Read in {self.__class__.__name__} timed out")
@@ -223,13 +225,13 @@ class SerialTransport(BaseTransport):
         self.port_name = port
         self.port = None
 
-    def connect(self):
+    def connect(self, baudrate: int = 300):
         """
         Creates a serial port.
         """
         self.port = serial.Serial(
             self.port_name,
-            baudrate=300,
+            baudrate=baudrate,
             parity=serial.PARITY_EVEN,
             stopbits=serial.STOPBITS_ONE,
             bytesize=serial.SEVENBITS,
@@ -270,7 +272,7 @@ class SerialTransport(BaseTransport):
 
         :param baud:
         """
-        time.sleep(0.5)
+        logger.info(f"Switching baudrate to: {baud}")
         self.port = self.port = serial.Serial(
             self.port_name,
             baudrate=baud,

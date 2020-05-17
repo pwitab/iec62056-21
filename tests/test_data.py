@@ -34,14 +34,14 @@ class TestDataSets:
         ds = messages.DataSet.from_representation(self.data_set_without_unit)
         assert ds.value == "100"
         assert ds.address == "3.1.0"
-        assert ds.unit == None
+        assert ds.unit is None
 
     def test_from_bytes_without_unit(self):
         ds_bytes = self.data_set_without_unit.encode("latin-1")
         ds = messages.DataSet.from_representation(self.data_set_without_unit)
         assert ds.value == "100"
         assert ds.address == "3.1.0"
-        assert ds.unit == None
+        assert ds.unit is None
 
     def test_to_string_without_unit(self):
         ds = messages.DataSet(value="100", address="3.1.0", unit=None)
@@ -224,8 +224,8 @@ class TestCommandMessage:
     def test_command_message_to_representation(self):
         cm = messages.CommandMessage(
             command="R",
-            command_type=1,
-            data_set=messages.DataSet(address="1.8.0", value=1),
+            command_type="1",
+            data_set=messages.DataSet(address="1.8.0", value="1"),
         )
 
         assert cm.to_representation() == "\x01R1\x021.8.0(1)\x03k"
@@ -235,7 +235,7 @@ class TestCommandMessage:
         cm = messages.CommandMessage.from_representation(data)
 
         assert cm.command == "P"
-        assert cm.command_type == 0
+        assert cm.command_type == "0"
         assert cm.data_set.value == "1234567"
         assert cm.data_set.address is None
         assert cm.data_set.unit is None
@@ -244,22 +244,24 @@ class TestCommandMessage:
         with pytest.raises(ValueError):
             cm = messages.CommandMessage(
                 command="X",
-                command_type=1,
-                data_set=messages.DataSet(address="1.8.0", value=1),
+                command_type="1",
+                data_set=messages.DataSet(address="1.8.0", value="1"),
             )
 
     def test_invalid_command_type_raises_value_error(self):
         with pytest.raises(ValueError):
             cm = messages.CommandMessage(
                 command="R",
-                command_type=12,
-                data_set=messages.DataSet(address="1.8.0", value=1),
+                command_type="12",
+                data_set=messages.DataSet(address="1.8.0", value="1"),
             )
 
     def test_to_representation_without_data_set(self):
         # like the break command
 
-        break_msg = messages.CommandMessage(command="B", command_type=0, data_set=None)
+        break_msg = messages.CommandMessage(
+            command="B", command_type="0", data_set=None
+        )
 
         assert break_msg.to_representation() == "\x01B0\x03q"
 
@@ -272,7 +274,7 @@ class TestCommandMessage:
         cm = messages.CommandMessage.for_single_read(address="1.8.0")
 
         assert cm.command == "R"
-        assert cm.command_type == 1
+        assert cm.command_type == "1"
         assert cm.data_set.address == "1.8.0"
 
         cm = messages.CommandMessage.for_single_read(
@@ -280,7 +282,7 @@ class TestCommandMessage:
         )
 
         assert cm.command == "R"
-        assert cm.command_type == 1
+        assert cm.command_type == "1"
         assert cm.data_set.address == "1.8.0"
         assert cm.data_set.value == "1"
 
@@ -288,7 +290,7 @@ class TestCommandMessage:
         cm = messages.CommandMessage.for_single_write(address="1.8.0", value="123")
 
         assert cm.command == "W"
-        assert cm.command_type == 1
+        assert cm.command_type == "1"
         assert cm.data_set.address == "1.8.0"
         assert cm.data_set.value == "123"
 
