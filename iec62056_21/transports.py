@@ -1,5 +1,6 @@
 import time
 import logging
+from typing import Tuple, Union, Optional
 
 import serial
 import socket
@@ -17,18 +18,18 @@ class BaseTransport:
     Base transport class for IEC 62056-21 communication.
     """
 
-    TRANSPORT_REQUIRES_ADDRESS = True
+    TRANSPORT_REQUIRES_ADDRESS: bool = True
 
-    def __init__(self, timeout=30):
+    def __init__(self, timeout: int = 30):
         self.timeout = timeout
 
-    def connect(self):
+    def connect(self) -> None:
         raise NotImplemented("Must be defined in subclass")
 
-    def disconnect(self):
+    def disconnect(self) -> None:
         raise NotImplemented("Must be defined in subclass")
 
-    def read(self, timeout=None):
+    def read(self, timeout: Optional[int] = None) -> bytes:
         """
         Will read a normal readout. Supports both full and partial block readout.
         When using partial blocks it will recreate the messages as it was not sent with
@@ -49,10 +50,11 @@ class BaseTransport:
         while True:
 
             in_data = b""
-            duration = 0
+            duration: float = 0.0
             start_time = time.time()
             while True:
                 b = self.recv(1)
+
                 duration = time.time() - start_time
                 if duration > self.timeout:
                     raise TimeoutError(f"Read in {self.__class__.__name__} timed out")
@@ -128,7 +130,12 @@ class BaseTransport:
 
         return total_data
 
-    def simple_read(self, start_char, end_char, timeout=None):
+    def simple_read(
+        self,
+        start_char: Union[str, bytes],
+        end_char: Union[str, bytes],
+        timeout: Optional[int] = None,
+    ) -> bytes:
         """
         A more flexible read for use with some messages.
         """
@@ -138,7 +145,7 @@ class BaseTransport:
         in_data = b""
         start_char_received = False
         timeout = timeout or self.timeout
-        duration = 0
+        duration: float = 0.0
         start_time = time.time()
         while True:
             b = self.recv(1)
@@ -165,7 +172,7 @@ class BaseTransport:
         logger.debug(f"Received {in_data!r} over transport: {self.__class__.__name__}")
         return in_data
 
-    def send(self, data: bytes):
+    def send(self, data: bytes) -> None:
         """
         Will send data over the transport
 
@@ -174,7 +181,7 @@ class BaseTransport:
         self._send(data)
         logger.debug(f"Sent {data!r} over transport: {self.__class__.__name__}")
 
-    def _send(self, data: bytes):
+    def _send(self, data: bytes) -> None:
         """
         Transport dependant sending functionality.
 
@@ -182,7 +189,7 @@ class BaseTransport:
         """
         raise NotImplemented("Must be defined in subclass")
 
-    def recv(self, chars):
+    def recv(self, chars: int) -> bytes:
         """
         Will receive data over the transport.
 
@@ -190,7 +197,7 @@ class BaseTransport:
         """
         return self._recv(chars)
 
-    def _recv(self, chars):
+    def _recv(self, chars: int) -> bytes:
         """
         Transport dependant sending functionality.
 
@@ -198,7 +205,7 @@ class BaseTransport:
         """
         raise NotImplemented("Must be defined in subclass")
 
-    def switch_baudrate(self, baud):
+    def switch_baudrate(self, baud: int) -> None:
         """
         The protocol defines a baudrate switchover process. Though it might not be used
         in all available transports.
@@ -217,19 +224,19 @@ class SerialTransport(BaseTransport):
 
     TRANSPORT_REQUIRES_ADDRESS = False
 
-    def __init__(self, port, timeout=10):
+    def __init__(self, port: str, timeout: int = 10):
 
         super().__init__(timeout=timeout)
-        self.port_name = port
-        self.port = None
+        self.port_name: str = port
+        self.port: Optional[serial.Serial] = None
 
-    def connect(self):
+    def connect(self, baudrate: int = 300) -> None:
         """
         Creates a serial port.
         """
         self.port = serial.Serial(
             self.port_name,
-            baudrate=300,
+            baudrate=baudrate,
             parity=serial.PARITY_EVEN,
             stopbits=serial.STOPBITS_ONE,
             bytesize=serial.SEVENBITS,
@@ -240,37 +247,49 @@ class SerialTransport(BaseTransport):
             xonxoff=False,
         )
 
-    def disconnect(self):
+    def disconnect(self) -> None:
         """
         Closes and removes the serial port.
         """
+        if self.port is None:
+            raise TransportError("Serial port is closed.")
+
         self.port.close()
         self.port = None
 
-    def _send(self, data: bytes):
+    def _send(self, data: bytes) -> None:
         """
         Sends data over the serial port.
 
         :param data:
         """
+        if self.port is None:
+            raise TransportError("Serial port is closed.")
+
         self.port.write(data)
         self.port.flush()
 
-    def _recv(self, chars=1):
+    def _recv(self, chars: int = 1) -> bytes:
         """
         Receives data over the serial port.
 
         :param chars:
         """
+        if self.port is None:
+            raise TransportError("Serial port is closed.")
+
         return self.port.read(chars)
 
-    def switch_baudrate(self, baud):
+    def switch_baudrate(self, baud: int) -> None:
         """
         Creates a new serial port with the correct baudrate.
 
         :param baud:
         """
-        time.sleep(0.5)
+        if self.port is None:
+            raise TransportError("Serial port is closed.")
+
+        logger.info(f"Switching baudrate to: {baud}")
         self.port = self.port = serial.Serial(
             self.port_name,
             baudrate=baud,
@@ -298,13 +317,13 @@ class TcpTransport(BaseTransport):
     Transport class for TCP/IP communication.
     """
 
-    def __init__(self, address, timeout=30):
+    def __init__(self, address: Tuple[str, int], timeout: int = 30):
 
         super().__init__(timeout=timeout)
         self.address = address
-        self.socket = self._get_socket()
+        self.socket: Optional[socket.socket] = self._get_socket()
 
-    def connect(self):
+    def connect(self) -> None:
         """
         Connects the socket to the device network interface.
         """
@@ -314,34 +333,43 @@ class TcpTransport(BaseTransport):
         logger.debug(f"Connecting to {self.address}")
         self.socket.connect(self.address)
 
-    def disconnect(self):
+    def disconnect(self) -> None:
         """
         Closes and removes the socket.
         """
+        if self.socket is None:
+            raise TransportError("Socket is closed")
+
         self.socket.close()
         self.socket = None
 
-    def _send(self, data: bytes):
+    def _send(self, data: bytes) -> None:
         """
         Sends data over the socket.
 
         :param data:
         """
+        if self.socket is None:
+            raise TransportError("Socket is closed")
+
         self.socket.sendall(data)
 
-    def _recv(self, chars=1):
+    def _recv(self, chars: int = 1) -> bytes:
         """
         Receives data from the socket.
 
         :param chars:
         """
+        if self.socket is None:
+            raise TransportError("Socket is closed")
+
         try:
             b = self.socket.recv(chars)
         except (OSError, IOError, socket.timeout, socket.error) as e:
             raise TransportError from e
         return b
 
-    def switch_baudrate(self, baud):
+    def switch_baudrate(self, baud: int) -> None:
         """
         Baudrate has not meaning in TCP/IP so we just dont do anything.
 
@@ -349,7 +377,7 @@ class TcpTransport(BaseTransport):
         """
         pass
 
-    def _get_socket(self):
+    def _get_socket(self) -> socket.socket:
         """
         Create a correct socket.
         """
