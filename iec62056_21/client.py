@@ -61,6 +61,12 @@ class Iec6205621Client:
         self.error_parser = error_parser_class()
         self._current_baudrate: int = 300
 
+        if self.transport.TRANSPORT_REQUIRES_ADDRESS and not self.device_address:
+            raise exceptions.Iec6205621ClientError(
+                f"The transported used ({self.transport}) requires a device address "
+                f"and none was supplied."
+            )
+
     @property
     def switchover_baudrate(self):
         """
@@ -82,7 +88,7 @@ class Iec6205621Client:
         # TODO: When not using the additional data on an EMH meter we get an ack back.
         #   a bit later we get the break message. Is the device waiting?
 
-        request = messages.CommandMessage.for_single_read(address)
+        request = messages.CommandMessage.for_single_read(address, additional_data)
         logger.info(f"Sending read request: {request}")
         self.transport.send(request.to_bytes())
 
@@ -151,7 +157,6 @@ class Iec6205621Client:
 
         # Setting the baudrate to the one propsed by the device.
         self._switchover_baudrate_char = ident_msg.switchover_baudrate_char
-        print(self.BAUDRATES_MODE_C[self._switchover_baudrate_char])
         self.identification = ident_msg.identification
         self.manufacturer_id = ident_msg.manufacturer
 
@@ -241,11 +246,7 @@ class Iec6205621Client:
          you want to talk to by adding the address in the request.
 
         """
-        if self.transport.TRANSPORT_REQUIRES_ADDRESS:
-            request = messages.RequestMessage(device_address=self.device_address)
-        else:
-            request = messages.RequestMessage()
-
+        request = messages.RequestMessage(device_address=self.device_address)
         logger.info(f"Sending request message: {request}")
         self.transport.send(request.to_bytes())
         self.rest()

@@ -2,6 +2,10 @@ class Iec6205621Exception(Exception):
     """General IEC62056-21 Exception"""
 
 
+class Iec6205621ClientError(Iec6205621Exception):
+    """Client error"""
+
+
 class Iec6205621ParseError(Iec6205621Exception):
     """Error in parsing IEC62056-21 data"""
 
