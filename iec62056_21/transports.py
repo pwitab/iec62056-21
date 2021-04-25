@@ -307,7 +307,7 @@ class SerialTransport(BaseTransport):
         return (
             f"{self.__class__.__name__}("
             f"port={self.port_name!r}, "
-            f"timeout={self.timeout!r}"
+            f"timeout={self.timeout!r})"
         )
 
 
