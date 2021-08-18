@@ -59,11 +59,10 @@ class Iec6205621Client:
         self.manufacturer_id = None
         self.use_short_reaction_time = False
         self.error_parser = error_parser_class()
-        self._current_baudrate: int = 300
 
         if self.transport.TRANSPORT_REQUIRES_ADDRESS and not self.device_address:
             raise exceptions.Iec6205621ClientError(
-                f"The transported used ({self.transport}) requires a device address "
+                f"The transport used ({self.transport}) requires a device address "
                 f"and none was supplied."
             )
 
@@ -146,11 +145,14 @@ class Iec6205621Client:
         """
         Initial communication to start the session with the device. Sends a
         RequestMessage and receives identification message.
+
+        The request message and its response are transmitted at a rate of 300 baud.
         """
 
+        self.transport.switch_baudrate(300)
         if self.battery_powered:
             self.send_battery_power_startup_sequence()
-        logger.info("Staring init sequence")
+        logger.info("Starting init sequence")
         self.send_init_request()
 
         ident_msg = self.read_identification()
@@ -270,24 +272,20 @@ class Iec6205621Client:
 
         Normal:
             Null chars should be sent to the device for 2.1-2.3 seconds with a maximum
-            of 0,5 seconds between them.
-            After the last charachter the client shall wait 1.5-1,7 seconds until it
-            sends the request message
+            of 0.5 milliseconds between them.
+            After the last charachter the client shall wait 1.5-1.7 seconds until it
+            sends the request message.
+            Transmission speed for the start procedure is 300 baud.
+            Each NUL char consists of 10 bits: 1 start, 7 data, 1 parity, 1 stop
 
         :param fast:
         """
         if fast:
             raise NotImplemented("Fast startup sequence is not yet implemented")
 
-        timeout = 2.2
-        duration = 0
-        start_time = time.time()
         logger.info("Sending battery startup sequence")
-        while duration < timeout:
-            out = b"\x00"
-            self.transport.send(out)
-            self.rest(0.2)
-            duration = time.time() - start_time
+        out = b"\x00" * 66  # 2.2 s / (10 bits/char / 300 bits/second) = 66 char
+        self.transport.send(out)
         logger.info("Startup Sequence finished")
 
         self.rest(1.5)
