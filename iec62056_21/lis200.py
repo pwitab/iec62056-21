@@ -224,7 +224,7 @@ class WrongInputError(Lis200ProtocolError):
 
 
 class UnknownUnitsError(Lis200ProtocolError):
-    """Code: 14, Unknown units code """
+    """Code: 14, Unknown units code"""
 
 
 class WrongAccessCodeError(Lis200ProtocolError):

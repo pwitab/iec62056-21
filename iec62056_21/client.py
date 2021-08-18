@@ -11,6 +11,14 @@ class Iec6205621Client:
     A client class for IEC 62056-21. Only validated with meters using mode C.
     """
 
+    BAUDRATES_MODE_B = {
+        "A": 600,
+        "B": 1200,
+        "C": 2400,
+        "D": 4800,
+        "E": 9600,
+        "F": 19200,
+    }
     BAUDRATES_MODE_C = {
         "0": 300,
         "1": 600,
@@ -38,6 +46,7 @@ class Iec6205621Client:
         "manufacturer8": "8",
         "manufacturer9": "9",
     }
+    SUPPORTED_PROTOCOL_MODES = ["B", "C"]
     SHORT_REACTION_TIME = 0.02
     REACTION_TIME = 0.2
 
@@ -48,6 +57,7 @@ class Iec6205621Client:
         password="00000000",
         battery_powered=False,
         error_parser_class=exceptions.DummyErrorParser,
+        protocol_mode="C",
     ):
 
         self.transport = transport
@@ -59,7 +69,7 @@ class Iec6205621Client:
         self.manufacturer_id = None
         self.use_short_reaction_time = False
         self.error_parser = error_parser_class()
-        self._current_baudrate: int = 300
+        self.protocol_mode = protocol_mode
 
         if self.transport.TRANSPORT_REQUIRES_ADDRESS and not self.device_address:
             raise exceptions.Iec6205621ClientError(
@@ -67,12 +77,20 @@ class Iec6205621Client:
                 f"and none was supplied."
             )
 
+        if self.protocol_mode not in self.SUPPORTED_PROTOCOL_MODES:
+            raise NotImplemented(
+                f"Protocol mode {self.protocol_mode} is not yet implemented"
+            )
+
     @property
     def switchover_baudrate(self):
         """
         Shortcut to get the baud rate for the switchover.
         """
-        return self.BAUDRATES_MODE_C.get(self._switchover_baudrate_char)
+        if self.protocol_mode == "B":
+            return self.BAUDRATES_MODE_B[self._switchover_baudrate_char]
+        if self.protocol_mode == "C":
+            return self.BAUDRATES_MODE_C[self._switchover_baudrate_char]
 
     def read_single_value(self, address, additional_data="1"):
         """
@@ -155,8 +173,21 @@ class Iec6205621Client:
 
         ident_msg = self.read_identification()
 
-        # Setting the baudrate to the one propsed by the device.
+        # Setting the baudrate to the one proposed by the device.
         self._switchover_baudrate_char = ident_msg.switchover_baudrate_char
+
+        if (
+            self.protocol_mode == "B"
+            and self._switchover_baudrate_char not in self.BAUDRATES_MODE_B
+        ) or (
+            self.protocol_mode == "C"
+            and self._switchover_baudrate_char not in self.BAUDRATES_MODE_C
+        ):
+            raise exceptions.Iec6205621ClientError(
+                f"The baudrate switchover character '{self._switchover_baudrate_char}' "
+                f"is not valid for protocol mode {self.protocol_mode}."
+            )
+
         self.identification = ident_msg.identification
         self.manufacturer_id = ident_msg.manufacturer
 
@@ -170,6 +201,10 @@ class Iec6205621Client:
         Goes through the steps to set the meter in programming mode.
         Returns the password challenge request to be acted on.
         """
+        if self.protocol_mode == "B":
+            raise NotImplemented(
+                f"Programming mode for protocol {self.protocol_mode} is not yet implemented"
+            )
 
         self.startup()
 
@@ -185,7 +220,10 @@ class Iec6205621Client:
         Goes through the steps to read the standard readout response from the device.
         """
         self.startup()
-        self.ack_with_option_select("readout")
+        if self.protocol_mode == "B":
+            self.transport.switch_baudrate(self.switchover_baudrate)
+        elif self.protocol_mode == "C":
+            self.ack_with_option_select("readout")
         logger.info(f"Reading standard readout from device.")
         response = self.read_response()
         return response
@@ -233,9 +271,7 @@ class Iec6205621Client:
         logger.info(f"Sending AckOptionsSelect message: {ack_message}")
         self.transport.send(ack_message.to_bytes())
         self.rest()
-        self.transport.switch_baudrate(
-            baud=self.BAUDRATES_MODE_C[self._switchover_baudrate_char]
-        )
+        self.transport.switch_baudrate(self.switchover_baudrate)
 
     def send_init_request(self):
         """
