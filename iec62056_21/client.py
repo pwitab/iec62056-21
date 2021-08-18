@@ -46,6 +46,7 @@ class Iec6205621Client:
         "manufacturer8": "8",
         "manufacturer9": "9",
     }
+    SUPPORTED_PROTOCOL_MODES = ["B", "C"]
     SHORT_REACTION_TIME = 0.02
     REACTION_TIME = 0.2
 
@@ -74,6 +75,11 @@ class Iec6205621Client:
             raise exceptions.Iec6205621ClientError(
                 f"The transported used ({self.transport}) requires a device address "
                 f"and none was supplied."
+            )
+
+        if self.protocol_mode not in self.SUPPORTED_PROTOCOL_MODES:
+            raise NotImplemented(
+                f"Protocol mode {self.protocol_mode} is not yet implemented"
             )
 
     @property
@@ -195,6 +201,10 @@ class Iec6205621Client:
         Goes through the steps to set the meter in programming mode.
         Returns the password challenge request to be acted on.
         """
+        if self.protocol_mode == "B":
+            raise NotImplemented(
+                f"Programming mode for protocol {self.protocol_mode} is not yet implemented"
+            )
 
         self.startup()
 
@@ -210,10 +220,10 @@ class Iec6205621Client:
         Goes through the steps to read the standard readout response from the device.
         """
         self.startup()
-        if self.protocol_mode == "C":
-            self.ack_with_option_select("readout")
-        else:
+        if self.protocol_mode == "B":
             self.transport.switch_baudrate(self.switchover_baudrate)
+        elif self.protocol_mode == "C":
+            self.ack_with_option_select("readout")
         logger.info(f"Reading standard readout from device.")
         response = self.read_response()
         return response
