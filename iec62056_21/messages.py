@@ -172,8 +172,8 @@ class ReadoutDataMessage(Iec6205621Data):
 
 @attr.s(auto_attribs=True)
 class CommandMessage(Iec6205621Data):
-    allowed_commands: ClassVar[List[str]] = ["P", "W", "R", "E", "B"]
-    allowed_command_types: ClassVar[List[str]] = [
+    ALLOWED_COMMANDS: ClassVar[List[str]] = ["P", "W", "R", "E", "B"]
+    ALLOWES_COMMAND_TYPES: ClassVar[List[str]] = [
         "0",
         "1",
         "2",
@@ -186,8 +186,8 @@ class CommandMessage(Iec6205621Data):
         "9",
     ]
 
-    command: str
-    command_type: str
+    command: str = attr.ib(validator=attr.validators.in_(ALLOWED_COMMANDS))
+    command_type: str = attr.ib(validator=attr.validators.in_(ALLOWES_COMMAND_TYPES))
     data_set: Optional[DataSet] = attr.ib(default=None)
 
     def to_representation(self) -> str:
