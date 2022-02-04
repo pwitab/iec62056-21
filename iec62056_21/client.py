@@ -305,7 +305,7 @@ class Iec6205621Client:
 
         :param timeout:
         """
-        data = self.transport.read()
+        data = self.transport.read(timeout)
         if data.startswith(b"\x01"):
             # We probably received a password challenge
             return messages.CommandMessage.from_bytes(data)

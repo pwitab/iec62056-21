@@ -56,7 +56,7 @@ class BaseTransport:
                 b = self.recv(1)
 
                 duration = time.time() - start_time
-                if duration > self.timeout:
+                if duration > timeout:
                     raise TimeoutError(f"Read in {self.__class__.__name__} timed out")
                 if not start_char_received:
                     # is start char?
