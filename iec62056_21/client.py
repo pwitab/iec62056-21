@@ -155,7 +155,7 @@ class Iec6205621Client:
 
         ident_msg = self.read_identification()
 
-        # Setting the baudrate to the one propsed by the device.
+        # Setting the baudrate to the one proposed by the device.
         self._switchover_baudrate_char = ident_msg.switchover_baudrate_char
         self.identification = ident_msg.identification
         self.manufacturer_id = ident_msg.manufacturer
@@ -271,7 +271,7 @@ class Iec6205621Client:
         Normal:
             Null chars should be sent to the device for 2.1-2.3 seconds with a maximum
             of 0,5 seconds between them.
-            After the last charachter the client shall wait 1.5-1,7 seconds until it
+            After the last character the client shall wait 1.5-1,7 seconds until it
             sends the request message
 
         :param fast:

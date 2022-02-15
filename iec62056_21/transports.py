@@ -86,7 +86,7 @@ class BaseTransport:
             )
 
             if start_char == b"\x01":
-                # This is a command message, probably Password challange.
+                # This is a command message, probably Password challenge.
                 total_data += in_data
                 break
 
@@ -371,7 +371,7 @@ class TcpTransport(BaseTransport):
 
     def switch_baudrate(self, baud: int) -> None:
         """
-        Baudrate has not meaning in TCP/IP so we just dont do anything.
+        Baudrate has not meaning in TCP/IP so we just don't do anything.
 
         :param baud:
         """

@@ -27,11 +27,11 @@ def parse_datetime(datetime_string, utc_offset=None):
 
 class ArchiveReadoutCommand(Iec6205621Data):
     """
-    A spacial readout commnad is needed to read archives.
+    A spacial readout command is needed to read archives.
 
-    Each data row contains the measurements save at a certain point in time.
+    Each data row contains the measurements saved at a certain point in time.
     Any range of the data in the archive can be read out. How to read the archive is
-    specified withing the data in the readout command. within the parenthesises.
+    specified within the data in the readout command within the parentheses.
 
     For attributes !=0 there is only one data row in the answer.
 
@@ -52,10 +52,10 @@ class ArchiveReadoutCommand(Iec6205621Data):
         Example if timestamp is the third value in the archive you need to set the
         position to 3 to specify a time range. Defaults to `1`. Max value is 99.
     :param str start: Lower limit (oldest data row) of the archive field to be read out.
-        Allowed lenght is 17 so it can contain timestamps. Defaults to `''` and if not
+        Allowed length is 17 so it can contain timestamps. Defaults to `''` and if not
         present the oldest available row is used as lower limit
     :param str end: Upper limit (newest data row) of the archive field to be read out.
-        Allowed lenght is 17 so it can contain timestamps. Defaults to `''` and if not
+        Allowed length is 17 so it can contain timestamps. Defaults to `''` and if not
         present the newest available data row is used as the upper limit.
     :param bool partial_blocks: Indicates if readout should be done via partial blocks.
         Defaults to `False`.
@@ -150,8 +150,8 @@ class ArchiveReadout:
 
         for line in self.values.data_block.data_lines:
 
-            # other positions are refered without initial 0. But that wont work when
-            # referenceing a list.
+            # other positions are referred without initial 0. But that wont work when
+            # referencing a list.
             datetime_index = self.datetime_position - 1
 
             timestamp = parse_datetime(
