@@ -286,10 +286,11 @@ class AnswerDataMessage(Iec6205621Data):
     def from_representation(cls, string_data):
         _in_data = string_data
 
-        if not utils.bcc_valid(string_data):
-            raise ValueError("BCC not valid")
+        if len(string_data):
+            if not utils.bcc_valid(string_data):
+                raise ValueError("BCC not valid")
 
-        _in_data = _in_data[1:-2]  # remove stx -- etx bcc
+            _in_data = _in_data[1:-2]  # remove stx -- etx bcc
 
         data_block = DataBlock.from_representation(_in_data)
 

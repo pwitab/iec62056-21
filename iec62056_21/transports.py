@@ -5,6 +5,7 @@ from typing import Tuple, Union, Optional
 import serial
 import socket
 from iec62056_21 import utils, exceptions, constants
+from iec62056_21.utils import ensure_bytes
 
 logger = logging.getLogger(__name__)
 
@@ -38,8 +39,9 @@ class BaseTransport:
         :param timeout:
         :return:
         """
-        start_chars = [b"\x01", b"\x02"]
-        end_chars = [b"\x03", b"\x04"]
+        start_chars = [ensure_bytes(constants.SOH), ensure_bytes(constants.STX)]
+        end_chars = [ensure_bytes(constants.ETX), ensure_bytes(constants.EOT),
+                     ensure_bytes(constants.ACK), ensure_bytes(constants.NACK)]
         total_data = b""
         packets = 0
         start_char_received = False
@@ -56,50 +58,57 @@ class BaseTransport:
                 b = self.recv(1)
 
                 duration = time.time() - start_time
-                if duration > self.timeout:
-                    raise TimeoutError(f"Read in {self.__class__.__name__} timed out")
-                if not start_char_received:
-                    # is start char?
-                    if b in start_chars:
+                # Underlying connection hasn't received anything within allotted
+                # time, signal the timeout
+                if duration > self.timeout and not b:
+                    raise TimeoutError(f"Block read in {self.__class__.__name__} timed out")
+
+                # Finish collecting the data (if in progress) once an end char
+                # is received and end the processing
+                if b in end_chars:
+                    if start_char_received:
                         in_data += b
-                        start_char_received = True
-                        start_char = b
-                        continue
-                    else:
-                        continue
-                else:
-                    # is end char?
-                    if b in end_chars:
-                        in_data += b
-                        end_char = b
-                        break
-                    else:
-                        in_data += b
-                        continue
+                    end_char = b
+                    break
+
+                # Store the start char if received and none seen previously
+                if not start_char_received and b in start_chars:
+                    start_char_received = True
+                    start_char = b
+
+                # Collect the data
+                if start_char_received:
+                    in_data += b
+                    continue
 
             packets += 1
 
-            bcc = self.recv(1)
-            in_data += bcc
-            logger.debug(
-                f"Received {in_data!r} over transport: {self.__class__.__name__}"
-            )
+            # BCC only accompanies data
+            if len(in_data):
+                bcc = self.recv(1)
+                in_data += bcc
 
-            if start_char == b"\x01":
-                # This is a command message, probably Password challange.
+                logger.debug(
+                    f"(packet {packets}) Received {in_data!r} ({in_data.hex()})"
+                    f" over transport: {self.__class__.__name__}"
+                )
+
+            if start_char == ensure_bytes(constants.SOH):
+                # This is a command message, probably Password challenge.
                 total_data += in_data
                 break
 
-            if end_char == b"\x04":  # EOT (partial read)
+            if end_char == ensure_bytes(constants.EOT):  # EOT (partial read)
                 # we received a partial block
                 if not utils.bcc_valid(in_data):
-                    # Nack and read again
+                    # NACK and read again
+                    logger.debug('EOT received and BCC invalid, sending NACK')
                     self.send(constants.NACK.encode(constants.ENCODING))
                     continue
                 else:
-                    # ack and read next
+                    # ACK and read next
                     self.send(constants.ACK.encode(constants.ENCODING))
-                    # remove bcc and eot and add line end.
+                    # remove BCC and EOT and add line end.
                     in_data = in_data[:-2] + constants.LINE_END.encode(
                         constants.ENCODING
                     )
@@ -108,12 +117,16 @@ class BaseTransport:
                         in_data = in_data[1:]
 
                     total_data += in_data
+                    logger.debug(
+                        'EOT received and BCC validated, continue processing'
+                    )
                     continue
 
-            if end_char == b"\x03":
+            if end_char == ensure_bytes(constants.ETX):
                 # Either it was the only message or we got the last message.
                 if not utils.bcc_valid(in_data):
-                    # Nack and read again
+                    # NACK and read again
+                    logger.debug('ETX received and BCC invalid, sending NACK')
                     self.send(constants.NACK.encode(constants.ENCODING))
                     continue
                 else:
@@ -121,12 +134,29 @@ class BaseTransport:
                         in_data = in_data[1:]  # removing the leading STX
                     total_data += in_data
                     if packets > 1:
-                        # The last bcc is not correct compared to the whole
-                        # message. But we have verified all the bccs along the way so
+                        # The last BCC is not correct compared to the whole
+                        # message. But we have verified all the BCCs along the way so
                         # we just compute it so the message is usable.
                         total_data = utils.add_bcc(total_data[:-1])
 
+                    logger.debug(
+                        'ETX received and BCC validated, all data collected'
+                    )
                     break
+
+            if end_char == ensure_bytes(constants.ACK):
+                # ACK received, end the processing
+                # TODO: check the specification if ACK might or has to have
+                # data, and verify accordingly
+                logger.debug('ACK received, all data collected')
+                break
+
+            if end_char == ensure_bytes(constants.NACK):
+                # NACK received, end the processing
+                # TODO: check the specification if ACK might or has to have
+                # data, and verify accordingly
+                logger.debug('NACK received, all data collected')
+                break
 
         return total_data
 
@@ -150,26 +180,35 @@ class BaseTransport:
         while True:
             b = self.recv(1)
             duration = time.time() - start_time
-            if duration > self.timeout:
-                raise TimeoutError(f"Read in {self.__class__.__name__} timed out")
-            if not start_char_received:
-                # is start char?
-                if b == _start_char:
-                    in_data += b
-                    start_char_received = True
-                    continue
-                else:
-                    continue
-            else:
-                # is end char?
-                if b == _end_char:
-                    in_data += b
-                    break
-                else:
-                    in_data += b
-                    continue
 
-        logger.debug(f"Received {in_data!r} over transport: {self.__class__.__name__}")
+            # Underlying connection hasn't received anything within allotted
+            # time, signal the timeout
+            if duration > self.timeout and not b:
+                raise TimeoutError(f"Read in {self.__class__.__name__} timed out")
+
+            # Finish collecting the data (if in progress) once an end char
+            # is received and end the processing
+            if b == _end_char:
+                if start_char_received:
+                    in_data += b
+                end_char = b
+                break
+
+            # Store the start char if received and none seen previously
+            if not start_char_received and b == _start_char:
+                start_char_received = True
+                start_char = b
+
+            # Collect the data
+            if start_char_received:
+                in_data += b
+                continue
+
+        if len(in_data):
+            logger.debug(
+                f"Received {in_data!r} ({in_data.hex()})"
+                f" over transport: {self.__class__.__name__}"
+            )
         return in_data
 
     def send(self, data: bytes) -> None:
@@ -179,7 +218,7 @@ class BaseTransport:
         :param data:
         """
         self._send(data)
-        logger.debug(f"Sent {data!r} over transport: {self.__class__.__name__}")
+        logger.debug(f"Sent {data!r} ({data.hex()}) over transport: {self.__class__.__name__}")
 
     def _send(self, data: bytes) -> None:
         """
