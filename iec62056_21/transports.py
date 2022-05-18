@@ -89,7 +89,7 @@ class BaseTransport:
                 in_data += bcc
 
                 logger.debug(
-                    f"(packet {packets}) Received {in_data!r} ({in_data.hex(' ')})"
+                    f"(packet {packets}) Received {in_data!r} ({in_data.hex()})"
                     f" over transport: {self.__class__.__name__}"
                 )
 
@@ -206,7 +206,7 @@ class BaseTransport:
 
         if len(in_data):
             logger.debug(
-                f"Received {in_data!r} ({in_data.hex(' ')})"
+                f"Received {in_data!r} ({in_data.hex()})"
                 f" over transport: {self.__class__.__name__}"
             )
         return in_data
@@ -218,7 +218,7 @@ class BaseTransport:
         :param data:
         """
         self._send(data)
-        logger.debug(f"Sent {data!r} ({data.hex(' ')}) over transport: {self.__class__.__name__}")
+        logger.debug(f"Sent {data!r} ({data.hex()}) over transport: {self.__class__.__name__}")
 
     def _send(self, data: bytes) -> None:
         """
